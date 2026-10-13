@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Расписание">
+<title>Расписание</title>
+<style>
+  :root {
+    --bg: #000000;
+    --bg-1: #0a0a0a;
+    --bg-2: #111111;
+    --bg-3: #161616;
+    --bg-4: #1c1c1c;
+    --border: #1f1f1f;
+    --border-strong: #2a2a2a;
+    --text: #f5f5f5;
+    --text-2: #a1a1a1;
+    --text-3: #666666;
+    --text-4: #404040;
+    --accent: #ffffff;
+    --success: #4ade80;
+    --danger: #f87171;
+    --warning: #fbbf24;
+    --info: #60a5fa;
+    --purple: #c084fc;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --radius-lg: 16px;
+  }
+
+  [data-theme="light"] {
+    --bg: #ffffff;
+    --bg-1: #fafafa;
+    --bg-2: #f5f5f5;
+    --bg-3: #efefef;
+    --bg-4: #e8e8e8;
+    --border: #e5e5e5;
+    --border-strong: #d4d4d4;
+    --text: #0a0a0a;
+    --text-2: #525252;
+    --text-3: #a3a3a3;
+    --text-4: #d4d4d4;
+    --accent: #000000;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.45;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+  }
+
+  #app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; padding-top: env(safe-area-inset-top); }
+
+  /* HEADER */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px 14px; flex-shrink: 0; border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .brand-title { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; }
+  .brand-sub { font-size: 11px; color: var(--text-3); font-weight: 500; letter-spacing: 0.02em; text-transform: uppercase; }
+  .header-actions { display: flex; gap: 4px; }
+
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: var(--radius-sm); border: none;
+    background: transparent; color: var(--text-2); font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s; font-family: inherit; position: relative;
+  }
+  .icon-btn:hover { background: var(--bg-3); color: var(--text); }
+  .icon-btn:active { background: var(--bg-4); transform: scale(0.94); }
+
+  /* Индикатор облачного статуса */
+  .sync-dot {
+    position: absolute; top: 6px; right: 6px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-4);
+    transition: background 0.3s;
+  }
+  .sync-dot.online { background: var(--success); }
+  .sync-dot.syncing { background: var(--warning); animation: pulse 1s infinite; }
+  .sync-dot.offline { background: var(--text-4); }
+  .sync-dot.error { background: var(--danger); }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* WEEK NAV */
+  .week-nav {
+    display: flex; align-items: center; gap: 4px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .nav-arrow {
+    width: 32px; height: 32px; border-radius: var(--radius-sm); border: none;
+    background: transparent; color: var(--text-2); font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s; font-family: inherit;
+  }
+  .nav-arrow:hover { background: var(--bg-3); color: var(--text); }
+
+  .date-range {
+    flex: 1; text-align: center; font-size: 13px; color: var(--text-2);
+    font-weight: 500; letter-spacing: 0.01em; font-variant-numeric: tabular-nums;
+  }
+
+  .today-btn {
+    padding: 6px 12px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong); background: transparent;
+    color: var(--text-2); font-size: 12px; font-weight: 500; cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .today-btn:hover { background: var(--bg-3); color: var(--text); }
+
+  /* WEEK SWITCHER */
+  .week-switcher {
+    display: flex; padding: 12px 16px; gap: 6px;
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .week-tab {
+    flex: 1; padding: 9px 12px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong); background: transparent;
+    color: var(--text-3); font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: all 0.15s; font-family: inherit; font-variant-numeric: tabular-nums;
+  }
+  .week-tab.active {
+    background: var(--accent); border-color: var(--accent);
+    color: var(--bg); font-weight: 600;
+  }
+  .week-tab:not(.active):hover { border-color: var(--text-4); color: var(--text-2); }
+
+  /* CONTENT */
+  .content {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    padding: 8px 16px calc(100px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* DAY */
+  .day-section { padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .day-section:last-child { border-bottom: none; }
+
+  .day-header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 10px; padding: 0 2px;
+  }
+  .day-name {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--text-2);
+  }
+  .day-section.today .day-name { color: var(--text); }
+  .day-section.today .day-name::before {
+    content: ''; display: inline-block; width: 6px; height: 6px;
+    background: var(--text); border-radius: 50%; margin-right: 8px;
+    vertical-align: middle; margin-bottom: 2px;
+  }
+  .day-date {
+    font-size: 11px; color: var(--text-3); font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* LESSON CARD */
+  .lesson-card {
+    background: var(--bg-2); border-radius: var(--radius); margin-bottom: 6px;
+    cursor: pointer; transition: background 0.15s; display: flex; overflow: hidden;
+  }
+  .lesson-card:hover { background: var(--bg-3); }
+  .lesson-card:active { background: var(--bg-4); }
+
+  .lesson-color { width: 3px; flex-shrink: 0; background: var(--text-3); }
+  .lesson-inner {
+    flex: 1; padding: 12px 14px; display: flex; gap: 14px;
+    align-items: flex-start; min-width: 0;
+  }
+  .lesson-time {
+    flex-shrink: 0; min-width: 44px; display: flex;
+    flex-direction: column; gap: 2px;
+  }
+  .time-start {
+    font-size: 14px; font-weight: 600; color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .time-end { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .lesson-body { flex: 1; min-width: 0; }
+  .lesson-title {
+    font-size: 14px; font-weight: 500; color: var(--text);
+    margin-bottom: 4px; word-break: break-word; line-height: 1.3;
+  }
+  .lesson-meta {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums;
+  }
+  .lesson-meta span { display: inline-flex; align-items: center; white-space: nowrap; }
+  .lesson-meta span + span::before {
+    content: '·'; margin-right: 10px; color: var(--text-4);
+  }
+  .lesson-type {
+    display: inline-block; font-size: 10px; font-weight: 500;
+    color: var(--text-3); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 6px;
+  }
+  .lesson-status {
+    flex-shrink: 0; display: flex; flex-direction: column; gap: 4px;
+    align-items: flex-end; padding-top: 2px;
+  }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-4); }
+  .status-dot.present { background: var(--success); }
+  .status-dot.absent { background: var(--danger); }
+  .status-dot.late { background: var(--warning); }
+  .status-dot.cancelled { background: var(--text-3); }
+  .status-mark {
+    font-size: 10px; font-weight: 600; color: var(--text-3);
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .status-mark.check { color: var(--purple); }
+  .status-mark.note { color: var(--info); }
+
+  /* EMPTY */
+  .empty-day { padding: 4px 2px 8px; color: var(--text-4); font-size: 13px; }
+  .empty-state { text-align: center; padding: 80px 20px; color: var(--text-3); }
+  .empty-state .mark {
+    font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--text-4); margin-bottom: 16px;
+  }
+  .empty-state .msg { font-size: 15px; color: var(--text-2); font-weight: 500; margin-bottom: 6px; }
+  .empty-state .sub { font-size: 13px; color: var(--text-3); line-height: 1.5; }
+
+  /* FAB */
+  .fab {
+    position: fixed; bottom: calc(24px + env(safe-area-inset-bottom)); right: 20px;
+    width: 52px; height: 52px; border-radius: 50%; background: var(--accent);
+    color: var(--bg); border: none; font-size: 22px; font-weight: 300;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s; z-index: 50; font-family: inherit; line-height: 1;
+    padding-bottom: 3px;
+  }
+  .fab:hover { transform: scale(1.05); }
+  .fab:active { transform: scale(0.95); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    display: flex; align-items: flex-end; justify-content: center;
+    z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: auto; }
+
+  .modal {
+    background: var(--bg-1); width: 100%; max-width: 520px; max-height: 92vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border: 1px solid var(--border); border-bottom: none;
+    display: flex; flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+    overflow: hidden;
+  }
+  .modal-overlay.show .modal { transform: translateY(0); }
+
+  .modal-header {
+    padding: 20px 22px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .modal-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+  .modal-close {
+    background: transparent; border: none; width: 30px; height: 30px;
+    border-radius: var(--radius-sm); color: var(--text-3); font-size: 20px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; font-family: inherit; line-height: 1;
+  }
+  .modal-close:hover { background: var(--bg-3); color: var(--text); }
+  .modal-body {
+    padding: 20px 22px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch;
+  }
+  .modal-footer {
+    padding: 14px 22px calc(20px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    display: flex; gap: 8px; flex-shrink: 0; background: var(--bg-1);
+  }
+
+  /* FORM */
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block; font-size: 11px; font-weight: 500; color: var(--text-3);
+    margin-bottom: 7px; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; padding: 11px 14px; background: var(--bg-2);
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    color: var(--text); font-size: 15px; font-family: inherit;
+    transition: border-color 0.15s, background 0.15s; outline: none;
+    letter-spacing: -0.01em;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: var(--text-3); background: var(--bg-3);
+  }
+  .form-input::placeholder, .form-textarea::placeholder { color: var(--text-4); }
+  .form-textarea { resize: vertical; min-height: 72px; line-height: 1.4; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat; background-position: right 14px center;
+    padding-right: 36px; cursor: pointer;
+  }
+
+  /* BUTTONS */
+  .btn {
+    padding: 12px 20px; border-radius: var(--radius-sm); border: none;
+    font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 6px; font-family: inherit;
+  }
+  .btn-primary { background: var(--accent); color: var(--bg); font-weight: 600; flex: 1; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-primary:active { opacity: 0.75; }
+  .btn-secondary { background: var(--bg-3); color: var(--text-2); }
+  .btn-secondary:hover { background: var(--bg-4); color: var(--text); }
+  .btn-danger {
+    background: transparent; color: var(--danger); border: 1px solid var(--danger);
+  }
+  .btn-danger:hover { background: rgba(248, 113, 113, 0.08); }
+  .btn-block { width: 100%; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ATTENDANCE */
+  .attendance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .att-btn {
+    padding: 12px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong); background: transparent;
+    color: var(--text-2); font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px; font-family: inherit;
+  }
+  .att-btn .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--text-4);
+  }
+  .att-btn[data-att="present"] .dot { background: var(--success); }
+  .att-btn[data-att="absent"] .dot { background: var(--danger); }
+  .att-btn[data-att="late"] .dot { background: var(--warning); }
+  .att-btn[data-att="cancelled"] .dot { background: var(--text-3); }
+  .att-btn.active {
+    border-color: var(--text-2); background: var(--bg-3); color: var(--text);
+  }
+  .att-btn:hover { border-color: var(--text-4); }
+
+  /* STATS */
+  .stat-hero {
+    padding: 24px; background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 16px;
+  }
+  .stat-hero-label {
+    font-size: 11px; font-weight: 500; color: var(--text-3);
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px;
+  }
+  .stat-hero-value {
+    font-size: 40px; font-weight: 300; letter-spacing: -0.04em;
+    color: var(--text); line-height: 1; font-variant-numeric: tabular-nums;
+  }
+  .stat-hero-sub {
+    font-size: 12px; color: var(--text-3); margin-top: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+    background: var(--border); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; margin-bottom: 20px;
+  }
+  .stat-cell { padding: 16px; background: var(--bg-1); }
+  .stat-cell-label {
+    font-size: 10px; font-weight: 500; color: var(--text-3);
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px;
+  }
+  .stat-cell-value {
+    font-size: 22px; font-weight: 400; color: var(--text);
+    letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+  }
+  .section-label {
+    font-size: 11px; font-weight: 500; color: var(--text-3);
+    letter-spacing: 0.08em; text-transform: uppercase; margin: 24px 0 12px;
+  }
+  .lesson-stat {
+    padding: 14px 16px; background: var(--bg-2);
+    border-radius: var(--radius); margin-bottom: 6px;
+  }
+  .lesson-stat-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 10px; gap: 12px;
+  }
+  .lesson-stat-title {
+    font-size: 14px; font-weight: 500; color: var(--text);
+    min-width: 0; word-break: break-word;
+  }
+  .lesson-stat-meta {
+    font-size: 11px; color: var(--text-3); margin-top: 3px;
+    font-variant-numeric: tabular-nums;
+  }
+  .lesson-stat-percent {
+    font-size: 18px; font-weight: 400; color: var(--text);
+    font-variant-numeric: tabular-nums; flex-shrink: 0;
+  }
+  .progress {
+    height: 2px; background: var(--bg-4); border-radius: 1px;
+    overflow: hidden; margin-bottom: 10px;
+  }
+  .progress-fill { height: 100%; background: var(--text-2); transition: width 0.5s; }
+  .lesson-stat-numbers {
+    display: flex; gap: 16px; font-size: 11px; color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .lesson-stat-numbers strong { color: var(--text-2); font-weight: 500; }
+
+  /* COLOR PICKER */
+  .color-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .color-swatch {
+    width: 32px; height: 32px; border-radius: var(--radius-sm);
+    cursor: pointer; border: 2px solid transparent;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .color-swatch:hover { transform: scale(1.05); }
+  .color-swatch.active { border-color: var(--text); }
+
+  /* AUTH SCREEN */
+  .auth-tabs {
+    display: flex; gap: 4px; padding: 4px;
+    background: var(--bg-2); border-radius: var(--radius-sm);
+    margin-bottom: 20px;
+  }
+  .auth-tab {
+    flex: 1; padding: 8px; border-radius: 6px; border: none;
+    background: transparent; color: var(--text-3); font-size: 13px;
+    font-weight: 500; cursor: pointer; font-family: inherit;
+    transition: all 0.15s;
+  }
+  .auth-tab.active { background: var(--bg-4); color: var(--text); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: calc(90px + env(safe-area-inset-bottom));
+    left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--bg-3); color: var(--text); padding: 10px 18px;
+    border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    font-size: 13px; font-weight: 500; z-index: 200; opacity: 0;
+    transition: opacity 0.2s, transform 0.2s; pointer-events: none;
+    max-width: 90vw; letter-spacing: -0.01em;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* SCROLLBAR */
+  .content::-webkit-scrollbar, .modal-body::-webkit-scrollbar { width: 3px; }
+  .content::-webkit-scrollbar-thumb, .modal-body::-webkit-scrollbar-thumb {
+    background: var(--bg-4); border-radius: 2px;
+  }
+
+  /* LOADING OVERLAY */
+  .loading-overlay {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 300; transition: opacity 0.3s;
+  }
+  .loading-overlay.hide { opacity: 0; pointer-events: none; }
+  .loading-spinner {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 2px solid var(--bg-4); border-top-color: var(--text-2);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* RESPONSIVE */
+  @media (min-width: 700px) {
+    .modal-overlay { align-items: center; padding: 24px; }
+    .modal {
+      border-radius: var(--radius-lg); max-height: 85vh;
+      border-bottom: 1px solid var(--border);
+    }
+    .content { max-width: 640px; margin: 0 auto; width: 100%; padding-left: 20px; padding-right: 20px; }
+    .header, .week-nav, .week-switcher { max-width: 640px; margin: 0 auto; width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+</div>
+
+<div id="app">
+  <div class="header">
+    <div class="brand">
+      <div class="brand-title">Расписание</div>
+      <div class="brand-sub" id="brandSub">1 неделя</div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="openStats()" title="Статистика" aria-label="Статистика">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </button>
+      <button class="icon-btn" onclick="openSettings()" title="Настройки" aria-label="Настройки">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <button class="icon-btn" onclick="toggleTheme()" title="Тема" id="themeBtn" aria-label="Тема">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <button class="icon-btn" onclick="openAccount()" title="Аккаунт" id="accountBtn" aria-label="Аккаунт">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span class="sync-dot" id="syncDot"></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="week-nav">
+    <button class="nav-arrow" onclick="shiftWeek(-1)" aria-label="Предыдущая неделя">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <button class="today-btn" onclick="goToday()">Сегодня</button>
+    <div class="date-range" id="dateRange">—</div>
+    <button class="nav-arrow" onclick="shiftWeek(1)" aria-label="Следующая неделя">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+  </div>
+
+  <div class="week-switcher">
+    <button class="week-tab" data-week="1" onclick="setWeek(1)">1н</button>
+    <button class="week-tab" data-week="2" onclick="setWeek(2)">2н</button>
+    <button class="week-tab" data-week="auto" onclick="setWeek('auto')">Авто</button>
+  </div>
+
+  <div class="content" id="content"></div>
+
+  <button class="fab" onclick="openLessonDialog()" aria-label="Добавить пару">+</button>
+</div>
+
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeModal()">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Заголовок</div>
+      <button class="modal-close" onclick="closeModal()" aria-label="Закрыть">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+
+<script>
+/* ============================================================
+   ⚠️ НАСТРОЙКА SUPABASE — вставь свои значения!
+   ============================================================ */
+const SUPABASE_URL = 'https://ividsmboeungjliwutpy.supabase.co/rest/v1/';
+const SUPABASE_KEY = 'sb_publishable_hBAqXQERqa0PDwlb6uDJqA_h8vlsC_l';
+
+let supabase = null;
+try {
+  if (!SUPABASE_URL.startsWith('ВСТАВЬ') && !SUPABASE_KEY.startsWith('ВСТАВЬ')) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+} catch (e) {
+  console.error('Supabase init error:', e);
+}
+
+/* ============================================================
+   ХРАНИЛИЩЕ
+   ============================================================ */
+const STORAGE_KEY = 'univ_schedule_v3';
+
+function defaultData() {
+  return {
+    lessons: {},
+    attendance: {},
+    notes: {},
+    checks: {},
+    settings: {
+      group: '',
+      semesterStart: '2025-09-01',
+      theme: 'dark',
+    },
+  };
+}
+
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return defaultData();
+    const d = JSON.parse(raw);
+    return {
+      lessons: d.lessons || {},
+      attendance: d.attendance || {},
+      notes: d.notes || {},
+      checks: d.checks || {},
+      settings: Object.assign(defaultData().settings, d.settings || {}),
+    };
+  } catch (e) {
+    return defaultData();
+  }
+}
+
+function saveLocal() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.error('Local save error:', e);
+  }
+}
+
+let state = loadLocal();
+
+/* ============================================================
+   УТИЛИТЫ
+   ============================================================ */
+const DAY_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+const DAY_NAMES_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function parseISO(s) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function formatDate(d, opts = { day: '2-digit', month: '2-digit' }) {
+  return d.toLocaleDateString('ru-RU', opts);
+}
+
+function getWeekNumber(date, semesterStart) {
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  const start = parseISO(semesterStart);
+  start.setHours(0, 0, 0, 0);
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const diff = Math.floor((d - start) / msPerWeek);
+  if (diff < 0) return 1;
+  return (diff % 2) + 1;
+}
+
+function getWeekRange(reference) {
+  const d = new Date(reference);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return [monday, sunday];
+}
+
+function addMinutes(timeStr, minutes) {
+  const [h, m] = timeStr.split(':').map(Number);
+  const total = h * 60 + m + minutes;
+  const hh = Math.floor(total / 60) % 24;
+  const mm = total % 60;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+/* ============================================================
+   СОСТОЯНИЕ UI
+   ============================================================ */
+let ui = {
+  currentDate: new Date(),
+  selectedWeek: 'auto',
+  editingId: null,
+  authMode: 'signin',
+};
+
+function getCurrentWeek() {
+  if (ui.selectedWeek === 'auto') {
+    return getWeekNumber(ui.currentDate, state.settings.semesterStart);
+  }
+  return ui.selectedWeek;
+}
+
+/* ============================================================
+   РЕНДЕР
+   ============================================================ */
+function render() {
+  const week = getCurrentWeek();
+  const [monday, sunday] = getWeekRange(ui.currentDate);
+
+  document.getElementById('brandSub').textContent = `${week} неделя`;
+
+  const dateRange = `${formatDate(monday)} — ${formatDate(sunday)}`;
+  document.getElementById('dateRange').textContent = dateRange;
+
+  document.querySelectorAll('.week-tab').forEach(tab => {
+    tab.classList.toggle('active', String(ui.selectedWeek) === tab.dataset.week);
+  });
+
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+
+  const todayStr = todayISO();
+  let totalLessons = 0;
+
+  for (let i = 0; i < 7; i++) {
+    const dayDate = new Date(monday);
+    dayDate.setDate(monday.getDate() + i);
+    const dayISO = isoDate(dayDate);
+    const isToday = dayISO === todayStr;
+    const dayLessons = lessonsForDay(week, i);
+
+    const section = document.createElement('div');
+    section.className = 'day-section' + (isToday ? ' today' : '');
+
+    const header = document.createElement('div');
+    header.className = 'day-header';
+    header.innerHTML = `
+      <div class="day-name">${DAY_NAMES[i]}</div>
+      <div class="day-date">${formatDate(dayDate)}</div>
+    `;
+    section.appendChild(header);
+
+    if (dayLessons.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-day';
+      empty.textContent = 'нет пар';
+      section.appendChild(empty);
+    } else {
+      totalLessons += dayLessons.length;
+      dayLessons.forEach(lesson => section.appendChild(makeLessonCard(lesson, dayISO)));
+    }
+
+    content.appendChild(section);
+  }
+
+  if (totalLessons === 0 && Object.keys(state.lessons).length === 0) {
+    content.innerHTML = `
+      <div class="empty-state">
+        <div class="mark">— Пусто —</div>
+        <div class="msg">Расписание не заполнено</div>
+        <div class="sub">Нажмите + внизу справа,<br>чтобы добавить пару</div>
+      </div>
+    `;
+  }
+}
+
+function lessonsForDay(week, dayIdx) {
+  return Object.values(state.lessons)
+    .filter(l => l.day === dayIdx && (l.week === 0 || l.week === week))
+    .sort((a, b) => a.time.localeCompare(b.time));
+}
+
+function makeLessonCard(lesson, dayISO) {
+  const att = state.attendance[`${lesson.id}|${dayISO}`];
+  const hasCheck = state.checks[`${lesson.id}|${dayISO}`];
+  const note = state.notes[`${lesson.id}|${dayISO}`];
+
+  const card = document.createElement('div');
+  card.className = 'lesson-card';
+  const endTime = addMinutes(lesson.time, lesson.duration || 80);
+
+  let statusHTML = '';
+  if (att) statusHTML += `<div class="status-dot ${att}"></div>`;
+  if (hasCheck) statusHTML += `<div class="status-mark check">Контр.</div>`;
+  else if (note) statusHTML += `<div class="status-mark note">Заметка</div>`;
+
+  const meta = [];
+  if (lesson.room) meta.push(`ауд. ${escapeHtml(lesson.room)}`);
+  if (lesson.teacher) meta.push(escapeHtml(lesson.teacher));
+
+  card.innerHTML = `
+    <div class="lesson-color" style="background:${lesson.color || '#666'};"></div>
+    <div class="lesson-inner">
+      <div class="lesson-time">
+        <div class="time-start">${lesson.time}</div>
+        <div class="time-end">${endTime}</div>
+      </div>
+      <div class="lesson-body">
+        <div class="lesson-title">${escapeHtml(lesson.title)}</div>
+        ${meta.length ? `<div class="lesson-meta">${meta.map(m => `<span>${m}</span>`).join('')}</div>` : ''}
+        <div class="lesson-type">${escapeHtml(lesson.type || 'Лекция')}</div>
+      </div>
+      ${statusHTML ? `<div class="lesson-status">${statusHTML}</div>` : ''}
+    </div>
+  `;
+
+  card.onclick = () => openDetails(lesson.id, dayISO);
+  return card;
+}
+
+/* ============================================================
+   НАВИГАЦИЯ
+   ============================================================ */
+function shiftWeek(delta) {
+  ui.currentDate.setDate(ui.currentDate.getDate() + delta * 7);
+  render();
+}
+function goToday() { ui.currentDate = new Date(); render(); }
+function setWeek(w) { ui.selectedWeek = w; render(); }
+
+/* ============================================================
+   МОДАЛКА
+   ============================================================ */
+function showModal(title, bodyHTML, footerHTML) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHTML;
+  document.getElementById('modalFooter').innerHTML = footerHTML || '';
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+/* ============================================================
+   ФОРМА ПАРЫ
+   ============================================================ */
+const LESSON_TYPES = ['Лекция', 'Практика', 'Лабораторная', 'Семинар', 'Экзамен', 'Зачёт'];
+const WEEK_OPTIONS = [
+  { value: 0, label: 'Каждую неделю' },
+  { value: 1, label: '1н (числитель)' },
+  { value: 2, label: '2н (знаменатель)' },
+];
+const COLOR_PALETTE = [
+  '#4ade80', '#60a5fa', '#c084fc', '#fbbf24',
+  '#f87171', '#22d3ee', '#f472b6', '#a3a3a3',
+];
+
+function openLessonDialog(lessonId = null, presetDay = null) {
+  ui.editingId = lessonId;
+  const lesson = lessonId ? state.lessons[lessonId] : {
+    title: '', teacher: '', room: '', time: '09:00', duration: 80,
+    day: presetDay !== null ? presetDay : (new Date().getDay() === 0 ? 0 : new Date().getDay() - 1),
+    week: 0, type: 'Лекция', color: COLOR_PALETTE[0], notes: '',
+  };
+
+  const body = `
+    <div class="form-group">
+      <label class="form-label">Название</label>
+      <input class="form-input" id="fTitle" value="${escapeHtml(lesson.title)}" placeholder="Математический анализ" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Преподаватель</label>
+      <input class="form-input" id="fTeacher" value="${escapeHtml(lesson.teacher)}" placeholder="Иванов И. И." autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Аудитория</label>
+      <input class="form-input" id="fRoom" value="${escapeHtml(lesson.room)}" placeholder="305а" autocomplete="off">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Время</label>
+        <input class="form-input" id="fTime" type="time" value="${lesson.time}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Длительность</label>
+        <select class="form-select" id="fDuration">
+          ${[40, 60, 80, 100, 120].map(d => `<option value="${d}" ${d == (lesson.duration || 80) ? 'selected' : ''}>${d} мин</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">День</label>
+        <select class="form-select" id="fDay">
+          ${DAY_NAMES.map((name, i) => `<option value="${i}" ${i === lesson.day ? 'selected' : ''}>${name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Неделя</label>
+        <select class="form-select" id="fWeek">
+          ${WEEK_OPTIONS.map(o => `<option value="${o.value}" ${o.value === (lesson.week ?? 0) ? 'selected' : ''}>${o.label}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Тип занятия</label>
+      <select class="form-select" id="fType">
+        ${LESSON_TYPES.map(t => `<option ${t === lesson.type ? 'selected' : ''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Метка</label>
+      <div class="color-row" id="colorRow">
+        ${COLOR_PALETTE.map(c => `<div class="color-swatch ${c === lesson.color ? 'active' : ''}" data-color="${c}" style="background:${c};"></div>`).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Заметки</label>
+      <textarea class="form-textarea" id="fNotes" placeholder="Домашнее задание, материалы...">${escapeHtml(lesson.notes || '')}</textarea>
+    </div>
+  `;
+
+  const footer = `
+    ${lessonId ? `<button class="btn btn-danger" onclick="deleteLesson('${lessonId}')">Удалить</button>` : ''}
+    <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+    <button class="btn btn-primary" onclick="saveLesson()">Сохранить</button>
+  `;
+
+  showModal(lessonId ? 'Изменить пару' : 'Новая пара', body, footer);
+
+  let selectedColor = lesson.color || COLOR_PALETTE[0];
+  document.querySelectorAll('#colorRow [data-color]').forEach(el => {
+    el.onclick = () => {
+      selectedColor = el.dataset.color;
+      document.querySelectorAll('#colorRow [data-color]').forEach(e2 => {
+        e2.classList.toggle('active', e2.dataset.color === selectedColor);
+      });
+    };
+  });
+  window._selectedColor = () => selectedColor;
+  setTimeout(() => document.getElementById('fTitle').focus(), 300);
+}
+
+function saveLesson() {
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) { toast('Введите название'); return; }
+
+  const data = {
+    id: ui.editingId || ('l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)),
+    title,
+    teacher: document.getElementById('fTeacher').value.trim(),
+    room: document.getElementById('fRoom').value.trim(),
+    time: document.getElementById('fTime').value || '09:00',
+    duration: parseInt(document.getElementById('fDuration').value),
+    day: parseInt(document.getElementById('fDay').value),
+    week: parseInt(document.getElementById('fWeek').value),
+    type: document.getElementById('fType').value,
+    color: window._selectedColor ? window._selectedColor() : COLOR_PALETTE[0],
+    notes: document.getElementById('fNotes').value.trim(),
+  };
+
+  state.lessons[data.id] = data;
+  saveAll();
+  closeModal();
+  render();
+  toast(ui.editingId ? 'Пара обновлена' : 'Пара добавлена');
+}
+
+function deleteLesson(id) {
+  if (!confirm('Удалить пару и всю её историю?')) return;
+  delete state.lessons[id];
+  for (const key of Object.keys(state.attendance)) {
+    if (key.startsWith(id + '|')) delete state.attendance[key];
+  }
+  for (const key of Object.keys(state.notes)) {
+    if (key.startsWith(id + '|')) delete state.notes[key];
+  }
+  for (const key of Object.keys(state.checks)) {
+    if (key.startsWith(id + '|')) delete state.checks[key];
+  }
+  saveAll();
+  closeModal();
+  render();
+  toast('Пара удалена');
+}
+
+/* ============================================================
+   ДЕТАЛИ ПАРЫ
+   ============================================================ */
+const ATT_OPTIONS = [
+  { key: 'present', label: 'Присутствовал' },
+  { key: 'absent', label: 'Отсутствовал' },
+  { key: 'late', label: 'Опоздал' },
+  { key: 'cancelled', label: 'Отменена' },
+];
+const CHECK_TYPES = ['—', 'Контрольная', 'Самостоятельная', 'Тест', 'Коллоквиум', 'Защита лабораторной', 'Опрос', 'Экзамен', 'Зачёт'];
+const GRADE_OPTIONS = ['—', '2', '3', '4', '5', 'Зачёт', 'Незачёт'];
+
+function openDetails(lessonId, dayISO) {
+  const lesson = state.lessons[lessonId];
+  if (!lesson) return;
+
+  const att = state.attendance[`${lessonId}|${dayISO}`] || '';
+  const note = state.notes[`${lessonId}|${dayISO}`] || '';
+  const check = state.checks[`${lessonId}|${dayISO}`] || {};
+  const stats = getLessonStats(lessonId);
+  const dateStr = formatDate(parseISO(dayISO), { day: '2-digit', month: 'long', year: 'numeric' });
+
+  const body = `
+    <div style="text-align:center; margin-bottom:24px;">
+      <div style="font-size:11px; color:var(--text-3); margin-bottom:8px; letter-spacing:0.08em; text-transform:uppercase;">${dateStr}</div>
+      <div style="font-size:20px; font-weight:500; margin-bottom:8px; letter-spacing:-0.02em;">${escapeHtml(lesson.title)}</div>
+      <div style="font-size:12px; color:var(--text-3); font-variant-numeric: tabular-nums;">
+        ${lesson.time} · ${lesson.duration} мин${lesson.room ? ' · ауд. ' + escapeHtml(lesson.room) : ''}
+      </div>
+      ${lesson.teacher ? `<div style="font-size:12px; color:var(--text-3); margin-top:4px;">${escapeHtml(lesson.teacher)}</div>` : ''}
+    </div>
+    <div class="form-group">
+      <label class="form-label">Посещаемость</label>
+      <div class="attendance-grid">
+        ${ATT_OPTIONS.map(o => `
+          <button class="att-btn ${att === o.key ? 'active' : ''}" data-att="${o.key}" onclick="setAtt('${lessonId}', '${dayISO}', '${o.key}')">
+            <span class="dot"></span><span>${o.label}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Контрольная работа</label>
+      <div class="form-row">
+        <select class="form-select" id="checkType" onchange="saveCheck('${lessonId}', '${dayISO}')">
+          ${CHECK_TYPES.map(t => `<option ${t === (check.type || '—') ? 'selected' : ''}>${t}</option>`).join('')}
+        </select>
+        <select class="form-select" id="checkGrade" onchange="saveCheck('${lessonId}', '${dayISO}')">
+          ${GRADE_OPTIONS.map(g => `<option ${g === (check.grade || '—') ? 'selected' : ''}>${g}</option>`).join('')}
+        </select>
+      </div>
+      <textarea class="form-textarea" id="checkComment" placeholder="Комментарий" style="margin-top:8px; min-height:60px;" onchange="saveCheck('${lessonId}', '${dayISO}')">${escapeHtml(check.comment || '')}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Заметка</label>
+      <textarea class="form-textarea" id="noteField" placeholder="Что важно запомнить" onchange="saveNote('${lessonId}', '${dayISO}')">${escapeHtml(note)}</textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Посещаемость пары</label>
+      <div class="lesson-stat" style="margin:0;">
+        <div class="lesson-stat-head">
+          <div>
+            <div class="lesson-stat-title">${stats.percent}%</div>
+            <div class="lesson-stat-meta">${stats.present} из ${stats.total || 0} посещено</div>
+          </div>
+        </div>
+        <div class="progress"><div class="progress-fill" style="width:${stats.percent}%"></div></div>
+        <div class="lesson-stat-numbers">
+          <span><strong>${stats.present}</strong> посещено</span>
+          <span><strong>${stats.absent}</strong> пропущено</span>
+          <span><strong>${stats.late}</strong> опозданий</span>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-secondary btn-block" style="margin-top:16px;" onclick="closeModal(); openLessonDialog('${lessonId}')">
+      Изменить пару
+    </button>
+  `;
+
+  showModal('Детали пары', body, `<button class="btn btn-primary btn-block" onclick="closeModal()">Готово</button>`);
+}
+
+function setAtt(lessonId, dayISO, key) {
+  const current = state.attendance[`${lessonId}|${dayISO}`];
+  if (current === key) delete state.attendance[`${lessonId}|${dayISO}`];
+  else state.attendance[`${lessonId}|${dayISO}`] = key;
+  saveAll();
+  openDetails(lessonId, dayISO);
+  render();
+}
+
+function saveNote(lessonId, dayISO) {
+  const text = document.getElementById('noteField').value;
+  if (text.trim()) state.notes[`${lessonId}|${dayISO}`] = text;
+  else delete state.notes[`${lessonId}|${dayISO}`];
+  saveAll();
+  render();
+}
+
+function saveCheck(lessonId, dayISO) {
+  const type = document.getElementById('checkType').value;
+  const grade = document.getElementById('checkGrade').value;
+  const comment = document.getElementById('checkComment').value.trim();
+  const info = {};
+  if (type !== '—') info.type = type;
+  if (grade !== '—') info.grade = grade;
+  if (comment) info.comment = comment;
+  if (Object.keys(info).length === 0) delete state.checks[`${lessonId}|${dayISO}`];
+  else state.checks[`${lessonId}|${dayISO}`] = info;
+  saveAll();
+  render();
+}
+
+function getLessonStats(lessonId) {
+  const stats = { present: 0, absent: 0, late: 0, cancelled: 0 };
+  const prefix = lessonId + '|';
+  for (const [k, v] of Object.entries(state.attendance)) {
+    if (k.startsWith(prefix) && stats[v] !== undefined) stats[v]++;
+  }
+  const total = stats.present + stats.absent + stats.late;
+  const percent = total > 0 ? Math.round(stats.present / total * 100) : 0;
+  return { ...stats, total, percent };
+}
+
+/* ============================================================
+   СТАТИСТИКА
+   ============================================================ */
+function openStats() {
+  const lessons = Object.values(state.lessons);
+  if (lessons.length === 0) {
+    showModal('Статистика', `
+      <div class="empty-state">
+        <div class="mark">— Пусто —</div>
+        <div class="msg">Нет данных</div>
+        <div class="sub">Добавьте пары,<br>чтобы отслеживать посещаемость</div>
+      </div>
+    `);
+    return;
+  }
+
+  let totalPresent = 0, totalAbsent = 0, totalLate = 0, totalCancelled = 0;
+  lessons.forEach(l => {
+    const s = getLessonStats(l.id);
+    totalPresent += s.present;
+    totalAbsent += s.absent;
+    totalLate += s.late;
+    totalCancelled += s.cancelled;
+  });
+  const totalVisited = totalPresent + totalAbsent + totalLate;
+  const overallPercent = totalVisited > 0 ? Math.round(totalPresent / totalVisited * 100) : 0;
+
+  let body = `
+    <div class="stat-hero">
+      <div class="stat-hero-label">Общая посещаемость</div>
+      <div class="stat-hero-value">${overallPercent}<span style="font-size:20px; color:var(--text-3); margin-left:4px;">%</span></div>
+      <div class="stat-hero-sub">${totalPresent} из ${totalVisited} пар</div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-cell"><div class="stat-cell-label">Посещено</div><div class="stat-cell-value">${totalPresent}</div></div>
+      <div class="stat-cell"><div class="stat-cell-label">Пропущено</div><div class="stat-cell-value">${totalAbsent}</div></div>
+      <div class="stat-cell"><div class="stat-cell-label">Опозданий</div><div class="stat-cell-value">${totalLate}</div></div>
+      <div class="stat-cell"><div class="stat-cell-label">Отменено</div><div class="stat-cell-value">${totalCancelled}</div></div>
+    </div>
+    <div class="section-label">По парам</div>
+  `;
+
+  lessons.sort((a, b) => a.title.localeCompare(b.title)).forEach(l => {
+    const s = getLessonStats(l.id);
+    body += `
+      <div class="lesson-stat">
+        <div class="lesson-stat-head">
+          <div style="min-width:0;">
+            <div class="lesson-stat-title">${escapeHtml(l.title)}</div>
+            <div class="lesson-stat-meta">${DAY_NAMES_SHORT[l.day]} · ${l.time} · ${escapeHtml(l.type || '')}</div>
+          </div>
+          <div class="lesson-stat-percent">${s.percent}%</div>
+        </div>
+        <div class="progress"><div class="progress-fill" style="width:${s.percent}%"></div></div>
+        <div class="lesson-stat-numbers">
+          <span><strong>${s.present}</strong> посещено</span>
+          <span><strong>${s.absent}</strong> пропущено</span>
+          <span><strong>${s.late}</strong> опозданий</span>
+        </div>
+      </div>
+    `;
+  });
+
+  showModal('Статистика', body, `<button class="btn btn-primary btn-block" onclick="closeModal()">Закрыть</button>`);
+}
+
+/* ============================================================
+   НАСТРОЙКИ
+   ============================================================ */
+function openSettings() {
+  const s = state.settings;
+  const body = `
+    <div class="form-group">
+      <label class="form-label">Номер группы</label>
+      <input class="form-input" id="sGroup" value="${escapeHtml(s.group)}" placeholder="ИУ7-42Б">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Начало семестра</label>
+      <input class="form-input" type="date" id="sStart" value="${s.semesterStart}">
+      <div style="font-size:11px; color:var(--text-3); margin-top:8px; line-height:1.5;">
+        От этой даты (понедельник) считается смена недель.
+        Первая неделя — 1н, следующая — 2н.
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Данные</label>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-secondary" style="flex:1;" onclick="exportData()">Экспорт</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="importData()">Импорт</button>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <label class="form-label">Опасная зона</label>
+      <button class="btn btn-danger btn-block" onclick="clearAll()">Удалить все данные</button>
+    </div>
+  `;
+
+  const footer = `
+    <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+    <button class="btn btn-primary" onclick="saveSettings()">Сохранить</button>
+  `;
+  showModal('Настройки', body, footer);
+}
+
+function saveSettings() {
+  state.settings.group = document.getElementById('sGroup').value.trim();
+  const startVal = document.getElementById('sStart').value;
+  if (startVal) state.settings.semesterStart = startVal;
+  saveAll();
+  closeModal();
+  render();
+  toast('Настройки сохранены');
+}
+
+function exportData() {
+  const dataStr = JSON.stringify(state, null, 2);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `schedule_${todayISO()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Файл сохранён');
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const imported = JSON.parse(ev.target.result);
+        if (!imported.lessons) throw new Error('Неверный формат');
+        if (confirm('Заменить текущие данные импортированными?')) {
+          state = {
+            lessons: imported.lessons || {},
+            attendance: imported.attendance || {},
+            notes: imported.notes || {},
+            checks: imported.checks || {},
+            settings: Object.assign(defaultData().settings, imported.settings || {}),
+          };
+          saveAll();
+          closeModal();
+          render();
+          toast('Данные импортированы');
+        }
+      } catch (err) { toast('Ошибка импорта'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function clearAll() {
+  if (!confirm('Удалить ВСЕ данные? Это действие необратимо.')) return;
+  if (!confirm('Точно удалить?')) return;
+  state = defaultData();
+  saveAll();
+  closeModal();
+  render();
+  toast('Данные удалены');
+}
+
+/* ============================================================
+   ТЕМА
+   ============================================================ */
+const ICON_MOON = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+const ICON_SUN = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>';
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  state.settings.theme = next;
+  saveLocal();
+  document.getElementById('themeBtn').innerHTML = next === 'dark' ? ICON_MOON : ICON_SUN;
+}
+
+function applyTheme() {
+  const theme = state.settings.theme || 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeBtn').innerHTML = theme === 'dark' ? ICON_MOON : ICON_SUN;
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+/* ============================================================
+   🔄 СИНХРОНИЗАЦИЯ С SUPABASE
+   ============================================================ */
+let currentUser = null;
+let syncTimeout = null;
+let isSyncing = false;
+let realtimeChannel = null;
+
+function setSyncDot(status) {
+  const dot = document.getElementById('syncDot');
+  if (!dot) return;
+  dot.className = 'sync-dot ' + status;
+}
+
+async function initAuth() {
+  if (!supabase) {
+    setSyncDot('offline');
+    document.getElementById('loadingOverlay').classList.add('hide');
+    return;
+  }
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session) {
+      currentUser = session.user;
+      await loadFromCloud();
+      subscribeRealtime();
+      setSyncDot('online');
+    } else {
+      setSyncDot('offline');
+    }
+
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        currentUser = session.user;
+        await loadFromCloud();
+        subscribeRealtime();
+        setSyncDot('online');
+        closeModal();
+        render();
+        toast('Вход выполнен');
+      }
+      if (event === 'SIGNED_OUT') {
+        currentUser = null;
+        if (realtimeChannel) {
+          supabase.removeChannel(realtimeChannel);
+          realtimeChannel = null;
+        }
+        setSyncDot('offline');
+        toast('Вы вышли из аккаунта');
+      }
+    });
+  } catch (e) {
+    console.error('Auth init error:', e);
+    setSyncDot('error');
+  } finally {
+    document.getElementById('loadingOverlay').classList.add('hide');
+  }
+}
+
+function openAccount() {
+  if (!supabase) {
+    showModal('Аккаунт', `
+      <div style="padding:20px; text-align:center; color:var(--text-3); font-size:13px;">
+        Supabase не настроен.<br>
+        Вставь Project URL и anon key в код.
+      </div>
+    `, `<button class="btn btn-primary btn-block" onclick="closeModal()">Понятно</button>`);
+    return;
+  }
+
+  if (currentUser) {
+    // Профиль
+    const stats = getCloudStats();
+    const body = `
+      <div style="text-align:center; padding:8px 0 24px;">
+        <div style="width:64px; height:64px; border-radius:50%; background:var(--bg-3); margin:0 auto 14px; display:flex; align-items:center; justify-content:center;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div style="font-size:15px; font-weight:500; margin-bottom:4px;">${escapeHtml(currentUser.email)}</div>
+        <div style="font-size:11px; color:var(--text-3); letter-spacing:0.05em; text-transform:uppercase;">
+          ${stats.online ? 'Синхронизация активна' : 'Нет соединения'}
+        </div>
+      </div>
+
+      <div class="stat-grid" style="grid-template-columns:1fr 1fr;">
+        <div class="stat-cell">
+          <div class="stat-cell-label">Пар</div>
+          <div class="stat-cell-value">${stats.lessonsCount}</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-cell-label">Отметок</div>
+          <div class="stat-cell-value">${stats.attCount}</div>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary btn-block" style="margin-bottom:8px;" onclick="forceSync()">
+        Синхронизировать сейчас
+      </button>
+      <button class="btn btn-secondary btn-block" style="margin-bottom:8px;" onclick="signOut()">
+        Выйти из аккаунта
+      </button>
+    `;
+    showModal('Аккаунт', body, `<button class="btn btn-primary btn-block" onclick="closeModal()">Закрыть</button>`);
+  } else {
+    // Форма входа
+    const body = `
+      <div class="auth-tabs">
+        <button class="auth-tab ${ui.authMode === 'signin' ? 'active' : ''}" onclick="switchAuthMode('signin')">Вход</button>
+        <button class="auth-tab ${ui.authMode === 'signup' ? 'active' : ''}" onclick="switchAuthMode('signup')">Регистрация</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" autocapitalize="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Пароль</label>
+        <input class="form-input" id="authPass" type="password" placeholder="Минимум 6 символов" autocomplete="current-password">
+      </div>
+      <div id="authMsg" style="font-size:12px; color:var(--danger); min-height:16px; margin-bottom:8px; text-align:center;"></div>
+
+      <div style="font-size:11px; color:var(--text-3); line-height:1.5; text-align:center; padding:12px 0;">
+        Войдите с одинаковым email на всех устройствах,<br>чтобы расписание синхронизировалось автоматически
+      </div>
+    `;
+
+    const footerHTML = ui.authMode === 'signin'
+      ? `<button class="btn btn-secondary" onclick="closeModal()">Позже</button>
+         <button class="btn btn-primary" onclick="doSignIn()">Войти</button>`
+      : `<button class="btn btn-secondary" onclick="closeModal()">Позже</button>
+         <button class="btn btn-primary" onclick="doSignUp()">Создать аккаунт</button>`;
+
+    showModal('Синхронизация', body, footerHTML);
+    setTimeout(() => document.getElementById('authEmail')?.focus(), 300);
+  }
+}
+
+function switchAuthMode(mode) {
+  ui.authMode = mode;
+  openAccount();
+}
+
+function getCloudStats() {
+  return {
+    lessonsCount: Object.keys(state.lessons).length,
+    attCount: Object.keys(state.attendance).length,
+    online: !!currentUser,
+  };
+}
+
+async function doSignIn() {
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPass').value;
+  const msg = document.getElementById('authMsg');
+
+  if (!email || !pass) { msg.textContent = 'Заполните оба поля'; return; }
+
+  msg.textContent = 'Вход...';
+  msg.style.color = 'var(--text-3)';
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+
+  if (error) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = translateAuthError(error.message);
+  }
+}
+
+async function doSignUp() {
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPass').value;
+  const msg = document.getElementById('authMsg');
+
+  if (!email || !pass) { msg.textContent = 'Заполните оба поля'; return; }
+  if (pass.length < 6) { msg.textContent = 'Пароль минимум 6 символов'; return; }
+
+  msg.textContent = 'Создание...';
+  msg.style.color = 'var(--text-3)';
+
+  const { data, error } = await supabase.auth.signUp({ email, password: pass });
+
+  if (error) {
+    msg.style.color = 'var(--danger)';
+    msg.textContent = translateAuthError(error.message);
+    return;
+  }
+
+  // Если автоподтверждение выключено — пользователь уже вошёл
+  if (data.session) {
+    // onAuthStateChange обработает
+  } else {
+    msg.style.color = 'var(--success)';
+    msg.textContent = 'Проверьте почту для подтверждения';
+  }
+}
+
+function translateAuthError(msg) {
+  if (!msg) return 'Ошибка';
+  if (msg.includes('Invalid login')) return 'Неверный email или пароль';
+  if (msg.includes('already registered')) return 'Такой email уже зарегистрирован';
+  if (msg.includes('Email not confirmed')) return 'Подтвердите email по ссылке из письма';
+  if (msg.includes('rate limit')) return 'Слишком много попыток, подождите';
+  return msg;
+}
+
+async function signOut() {
+  if (!confirm('Выйти из аккаунта? Локальные данные останутся.')) return;
+  await supabase.auth.signOut();
+  closeModal();
+}
+
+async function loadFromCloud() {
+  if (!currentUser) return;
+
+  setSyncDot('syncing');
+
+  try {
+    const { data, error } = await supabase
+      .from('schedules')
+      .select('data')
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (data && data.data && Object.keys(data.data).length > 0) {
+      // Облако не пустое — используем его
+      const cloudData = data.data;
+      state = {
+        lessons: cloudData.lessons || {},
+        attendance: cloudData.attendance || {},
+        notes: cloudData.notes || {},
+        checks: cloudData.checks || {},
+        settings: Object.assign(defaultData().settings, cloudData.settings || {}),
+      };
+      saveLocal();
+      applyTheme();
+      render();
+      setSyncDot('online');
+    } else {
+      // Первый вход — загружаем локальные данные в облако
+      await saveToCloud();
+    }
+  } catch (e) {
+    console.error('Load error:', e);
+    setSyncDot('error');
+    toast('Ошибка загрузки');
+  }
+}
+
+async function saveToCloud() {
+  if (!currentUser || isSyncing) return;
+
+  isSyncing = true;
+  setSyncDot('syncing');
+
+  try {
+    const { error } = await supabase
+      .from('schedules')
+      .upsert({
+        user_id: currentUser.id,
+        data: state,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) throw error;
+    setSyncDot('online');
+  } catch (e) {
+    console.error('Save error:', e);
+    setSyncDot('error');
+    toast('Не удалось сохранить');
+  } finally {
+    isSyncing = false;
+  }
+}
+
+function subscribeRealtime() {
+  if (!currentUser || realtimeChannel) return;
+
+  realtimeChannel = supabase
+    .channel('schedules-' + currentUser.id)
+    .on('postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'schedules',
+        filter: `user_id=eq.${currentUser.id}`
+      },
+      payload => {
+        if (isSyncing) return;
+        if (payload.new && payload.new.data) {
+          const cloudData = payload.new.data;
+          state = {
+            lessons: cloudData.lessons || {},
+            attendance: cloudData.attendance || {},
+            notes: cloudData.notes || {},
+            checks: cloudData.checks || {},
+            settings: Object.assign(defaultData().settings, cloudData.settings || {}),
+          };
+          saveLocal();
+          applyTheme();
+          render();
+          toast('Обновлено с другого устройства');
+        }
+      })
+    .subscribe();
+}
+
+function scheduleSyncToCloud() {
+  if (!currentUser) return;
+  setSyncDot('syncing');
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(saveToCloud, 600);
+}
+
+async function forceSync() {
+  if (!currentUser) return;
+  closeModal();
+  await saveToCloud();
+  toast('Синхронизировано');
+}
+
+/* ============================================================
+   ЕДИНАЯ ФУНКЦИЯ СОХРАНЕНИЯ
+   ============================================================ */
+function saveAll() {
+  saveLocal();
+  scheduleSyncToCloud();
+}
+
+/* ============================================================
+   КЛАВИАТУРА
+   ============================================================ */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  const modalOpen = document.getElementById('modalOverlay').classList.contains('show');
+  if (e.key === 'ArrowLeft' && !ui.editingId && !modalOpen) shiftWeek(-1);
+  if (e.key === 'ArrowRight' && !ui.editingId && !modalOpen) shiftWeek(1);
+  if (e.key === 'n' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    openLessonDialog();
+  }
+  // Enter в форме авторизации
+  if (e.key === 'Enter' && modalOpen) {
+    const title = document.getElementById('modalTitle')?.textContent;
+    if (title === 'Синхронизация') {
+      e.preventDefault();
+      if (ui.authMode === 'signin') doSignIn();
+      else doSignUp();
+    }
+  }
+});
+
+/* ============================================================
+   ИНДИКАТОР ОНЛАЙН-СТАТУСА
+   ============================================================ */
+window.addEventListener('online', () => {
+  if (currentUser) {
+    setSyncDot('syncing');
+    saveToCloud();
+  }
+});
+window.addEventListener('offline', () => {
+  if (currentUser) setSyncDot('offline');
+});
+
+/* ============================================================
+   СТАРТ
+   ============================================================ */
+applyTheme();
+render();
+initAuth();
+</script>
+
+</body>
+</html>
