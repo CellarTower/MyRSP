@@ -1277,20 +1277,36 @@ function findNextLesson() {
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const week = getWeekNumber(now, state.settings.semesterStart);
 
-  // ищем сегодня
+  // Ищем сегодня
   const todayLessons = lessonsForDay(week, todayIdx);
   for (const l of todayLessons) {
     const start = timeToMin(l.time);
     const end = start + (l.duration || 80);
     if (nowMin < start) {
-      return { lesson: l, when: 'today', startsIn: start - nowMin, status: 'upcoming', dayIdx: todayIdx };
+      return {
+        lesson: l,
+        when: 'today',
+        offset: 0,
+        startsIn: start - nowMin,
+        endsIn: null,
+        status: 'upcoming',
+        dayIdx: todayIdx,
+      };
     }
     if (nowMin >= start && nowMin < end) {
-      return { lesson: l, when: 'today', endsIn: end - nowMin, status: 'now', dayIdx: todayIdx };
+      return {
+        lesson: l,
+        when: 'today',
+        offset: 0,
+        startsIn: null,
+        endsIn: end - nowMin,
+        status: 'now',
+        dayIdx: todayIdx,
+      };
     }
   }
 
-  // ищем завтра и далее
+  // Ищем в следующие 7 дней
   const msPerDay = 86400000;
   for (let offset = 1; offset <= 7; offset++) {
     const future = new Date(now.getTime() + offset * msPerDay);
@@ -1298,16 +1314,32 @@ function findNextLesson() {
     const w = getWeekNumber(future, state.settings.semesterStart);
     const ls = lessonsForDay(w, idx);
     if (ls.length) {
-      return { lesson: ls[0], when: offset === 1 ? 'tomorrow' : 'later', offset, status: 'upcoming', dayIdx: idx };
+      // Считаем минуты до начала: сколько осталось сегодня + полные дни + минуты до первой пары
+      const nowMin2 = now.getHours() * 60 + now.getMinutes();
+      const minutesTodayLeft = 24 * 60 - nowMin2;
+      const firstStart = timeToMin(ls[0].time);
+      const startsIn = minutesTodayLeft + (offset - 1) * 24 * 60 + firstStart;
+
+      return {
+        lesson: ls[0],
+        when: offset === 1 ? 'tomorrow' : 'later',
+        offset,
+        startsIn,
+        endsIn: null,
+        status: 'upcoming',
+        dayIdx: idx,
+      };
     }
   }
+
   return null;
 }
 
 function formatMinutesLeft(min) {
-  if (min < 60) return `${min} мин`;
+  if (typeof min !== 'number' || isNaN(min) || min < 0) return '—';
+  if (min < 60) return `${Math.round(min)} мин`;
   const h = Math.floor(min / 60);
-  const m = min % 60;
+  const m = Math.round(min % 60);
   return m ? `${h} ч ${m} мин` : `${h} ч`;
 }
 
@@ -1330,7 +1362,8 @@ function renderNextBanner() {
     if (when === 'tomorrow') label = 'Завтра';
     else if (when === 'later') {
       const future = new Date(Date.now() + offset * 86400000);
-      label = DAY_NAMES_SHORT[future.getDay() === 0 ? 6 : future.getDay() - 1];
+      const futureIdx = future.getDay() === 0 ? 6 : future.getDay() - 1;
+      label = DAY_NAMES_SHORT[futureIdx];
     }
     document.getElementById('nextBannerLabel').textContent = label;
     document.getElementById('nextBannerTitle').textContent = lesson.title;
@@ -1338,18 +1371,30 @@ function renderNextBanner() {
   }
 }
 
+  
 function scrollToNextLesson() {
   const info = findNextLesson();
   if (!info) return;
-  if (info.status === 'now' || info.when === 'today') {
-    // скроллим к today
+
+  if (info.status === 'now' || (info.when === 'today' && info.offset === 0)) {
     const todayStr = todayISO();
     const el = document.querySelector(`.day-section[data-day-iso="${todayStr}"]`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } else {
-    // переключаем неделю вперёд/назад
-    goToday();
+    return;
   }
+
+  // Переключаем неделю так, чтобы попасть на день пары
+  const target = new Date();
+  target.setDate(target.getDate() + (info.offset || 0));
+  ui.currentDate = target;
+  render();
+
+  // Дополнительно скроллим через небольшую задержку
+  setTimeout(() => {
+    const iso = isoDate(target);
+    const el = document.querySelector(`.day-section[data-day-iso="${iso}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
 }
 
 function startNextBannerTimer() {
