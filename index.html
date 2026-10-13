@@ -81,7 +81,6 @@
   .icon-btn:hover { background: var(--bg-3); color: var(--text); }
   .icon-btn:active { background: var(--bg-4); transform: scale(0.94); }
 
-  /* Индикатор облачного статуса */
   .sync-dot {
     position: absolute; top: 6px; right: 6px;
     width: 6px; height: 6px; border-radius: 50%;
@@ -178,9 +177,31 @@
 
   .lesson-color { width: 3px; flex-shrink: 0; background: var(--text-3); }
   .lesson-inner {
-    flex: 1; padding: 12px 14px; display: flex; gap: 14px;
-    align-items: flex-start; min-width: 0;
+    flex: 1; padding: 12px 14px; display: flex; gap: 12px;
+    align-items: center; min-width: 0;
   }
+
+  /* AVATAR */
+  .teacher-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--bg-4);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-3);
+    border: 1px solid var(--border-strong);
+    overflow: hidden;
+    user-select: none;
+    letter-spacing: 0;
+  }
+
   .lesson-time {
     flex-shrink: 0; min-width: 44px; display: flex;
     flex-direction: column; gap: 2px;
@@ -311,6 +332,23 @@
     background-repeat: no-repeat; background-position: right 14px center;
     padding-right: 36px; cursor: pointer;
   }
+
+  /* PHOTO PICKER */
+  .photo-picker {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .photo-preview {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--bg-3); background-size: cover; background-position: center;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border-strong); flex-shrink: 0;
+    font-size: 20px; font-weight: 600; color: var(--text-3);
+    user-select: none;
+  }
+  .photo-actions {
+    flex: 1; display: flex; flex-direction: column; gap: 6px;
+  }
+  .photo-actions .btn { padding: 8px 14px; font-size: 13px; }
 
   /* BUTTONS */
   .btn {
@@ -677,6 +715,13 @@ function escapeHtml(s) {
   }[c]));
 }
 
+function getInitials(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
 /* ============================================================
    СОСТОЯНИЕ UI
    ============================================================ */
@@ -782,9 +827,16 @@ function makeLessonCard(lesson, dayISO) {
   if (lesson.room) meta.push(`ауд. ${escapeHtml(lesson.room)}`);
   if (lesson.teacher) meta.push(escapeHtml(lesson.teacher));
 
+  // Аватарка преподавателя
+  const initials = getInitials(lesson.teacher);
+  const avatarHTML = lesson.teacherPhoto
+    ? `<div class="teacher-avatar" style="background-image:url('${lesson.teacherPhoto}');"></div>`
+    : `<div class="teacher-avatar">${initials}</div>`;
+
   card.innerHTML = `
     <div class="lesson-color" style="background:${lesson.color || '#666'};"></div>
     <div class="lesson-inner">
+      ${avatarHTML}
       <div class="lesson-time">
         <div class="time-start">${lesson.time}</div>
         <div class="time-end">${endTime}</div>
@@ -839,6 +891,9 @@ const COLOR_PALETTE = [
   '#f87171', '#22d3ee', '#f472b6', '#a3a3a3',
 ];
 
+// undefined = не трогали, null = удалить, string = новое фото
+let _pendingPhoto = undefined;
+
 function openLessonDialog(lessonId = null, presetDay = null) {
   ui.editingId = lessonId;
   const lesson = lessonId ? state.lessons[lessonId] : {
@@ -846,6 +901,9 @@ function openLessonDialog(lessonId = null, presetDay = null) {
     day: presetDay !== null ? presetDay : (new Date().getDay() === 0 ? 0 : new Date().getDay() - 1),
     week: 0, type: 'Лекция', color: COLOR_PALETTE[0], notes: '',
   };
+
+  const hasPhoto = !!lesson.teacherPhoto;
+  const previewContent = hasPhoto ? '' : getInitials(lesson.teacher);
 
   const body = `
     <div class="form-group">
@@ -855,6 +913,24 @@ function openLessonDialog(lessonId = null, presetDay = null) {
     <div class="form-group">
       <label class="form-label">Преподаватель</label>
       <input class="form-input" id="fTeacher" value="${escapeHtml(lesson.teacher)}" placeholder="Иванов И. И." autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Фото преподавателя</label>
+      <div class="photo-picker">
+        <div class="photo-preview" id="photoPreview" ${hasPhoto ? `style="background-image:url('${lesson.teacherPhoto}');"` : ''}>${previewContent}</div>
+        <div class="photo-actions">
+          <input type="file" id="fPhoto" accept="image/*" style="display:none;">
+          <button type="button" class="btn btn-secondary" onclick="document.getElementById('fPhoto').click()">
+            ${hasPhoto ? 'Заменить фото' : 'Загрузить фото'}
+          </button>
+          <button type="button" class="btn btn-secondary" id="removePhotoBtn" style="${hasPhoto ? '' : 'display:none;'}" onclick="removeTeacherPhoto()">
+            Удалить фото
+          </button>
+        </div>
+      </div>
+      <div style="font-size:11px; color:var(--text-3); margin-top:8px; line-height:1.5;">
+        Фото обрежется в круг и сожмётся автоматически.
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">Аудитория</label>
@@ -922,12 +998,90 @@ function openLessonDialog(lessonId = null, presetDay = null) {
     };
   });
   window._selectedColor = () => selectedColor;
+
+  initPhotoPicker(lesson);
+
+  // Обновляем превью инициалов при вводе имени
+  const teacherInput = document.getElementById('fTeacher');
+  const preview = document.getElementById('photoPreview');
+  teacherInput.addEventListener('input', () => {
+    if (_pendingPhoto === null || (_pendingPhoto === undefined && !lesson.teacherPhoto)) {
+      preview.textContent = getInitials(teacherInput.value);
+    }
+  });
+
   setTimeout(() => document.getElementById('fTitle').focus(), 300);
+}
+
+function initPhotoPicker(lesson) {
+  _pendingPhoto = undefined;
+  const preview = document.getElementById('photoPreview');
+  const fileInput = document.getElementById('fPhoto');
+  const removeBtn = document.getElementById('removePhotoBtn');
+
+  function setPreview(src) {
+    if (src) {
+      preview.style.backgroundImage = `url('${src}')`;
+      preview.textContent = '';
+      removeBtn.style.display = '';
+    } else {
+      preview.style.backgroundImage = '';
+      preview.textContent = getInitials(document.getElementById('fTeacher')?.value || lesson.teacher || '');
+      removeBtn.style.display = 'none';
+    }
+  }
+
+  fileInput.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast('Фото больше 5 МБ');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        // Сжимаем в квадрат 200x200 с центральным кропом
+        const size = 200;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const min = Math.min(img.width, img.height);
+        const sx = (img.width - min) / 2;
+        const sy = (img.height - min) / 2;
+        ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        _pendingPhoto = dataUrl;
+        setPreview(dataUrl);
+      };
+      img.onerror = () => toast('Не удалось загрузить изображение');
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+}
+
+function removeTeacherPhoto() {
+  _pendingPhoto = null;
+  const preview = document.getElementById('photoPreview');
+  preview.style.backgroundImage = '';
+  preview.textContent = getInitials(document.getElementById('fTeacher')?.value || '');
+  document.getElementById('removePhotoBtn').style.display = 'none';
+  document.getElementById('fPhoto').value = '';
 }
 
 function saveLesson() {
   const title = document.getElementById('fTitle').value.trim();
   if (!title) { toast('Введите название'); return; }
+
+  let teacherPhoto;
+  if (_pendingPhoto === undefined) {
+    teacherPhoto = ui.editingId ? state.lessons[ui.editingId]?.teacherPhoto : undefined;
+  } else {
+    teacherPhoto = _pendingPhoto;
+  }
 
   const data = {
     id: ui.editingId || ('l_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7)),
@@ -942,6 +1096,8 @@ function saveLesson() {
     color: window._selectedColor ? window._selectedColor() : COLOR_PALETTE[0],
     notes: document.getElementById('fNotes').value.trim(),
   };
+
+  if (teacherPhoto) data.teacherPhoto = teacherPhoto;
 
   state.lessons[data.id] = data;
   saveAll();
@@ -990,8 +1146,13 @@ function openDetails(lessonId, dayISO) {
   const stats = getLessonStats(lessonId);
   const dateStr = formatDate(parseISO(dayISO), { day: '2-digit', month: 'long', year: 'numeric' });
 
+  const avatarHTML = lesson.teacherPhoto
+    ? `<div style="width:72px; height:72px; border-radius:50%; background-image:url('${lesson.teacherPhoto}'); background-size:cover; background-position:center; border:1px solid var(--border-strong); margin:0 auto 14px;"></div>`
+    : `<div style="width:72px; height:72px; border-radius:50%; background:var(--bg-3); border:1px solid var(--border-strong); margin:0 auto 14px; display:flex; align-items:center; justify-content:center; font-size:24px; font-weight:600; color:var(--text-3);">${getInitials(lesson.teacher)}</div>`;
+
   const body = `
     <div style="text-align:center; margin-bottom:24px;">
+      ${avatarHTML}
       <div style="font-size:11px; color:var(--text-3); margin-bottom:8px; letter-spacing:0.08em; text-transform:uppercase;">${dateStr}</div>
       <div style="font-size:20px; font-weight:500; margin-bottom:8px; letter-spacing:-0.02em;">${escapeHtml(lesson.title)}</div>
       <div style="font-size:12px; color:var(--text-3); font-variant-numeric: tabular-nums;">
@@ -1366,7 +1527,6 @@ function openAccount() {
   }
 
   if (currentUser) {
-    // Профиль
     const stats = getCloudStats();
     const body = `
       <div style="text-align:center; padding:8px 0 24px;">
@@ -1399,7 +1559,6 @@ function openAccount() {
     `;
     showModal('Аккаунт', body, `<button class="btn btn-primary btn-block" onclick="closeModal()">Закрыть</button>`);
   } else {
-    // Форма входа
     const body = `
       <div class="auth-tabs">
         <button class="auth-tab ${ui.authMode === 'signin' ? 'active' : ''}" onclick="switchAuthMode('signin')">Вход</button>
@@ -1482,7 +1641,6 @@ async function doSignUp() {
     return;
   }
 
-  // Если автоподтверждение выключено — пользователь уже вошёл
   if (data.session) {
     // onAuthStateChange обработает
   } else {
@@ -1521,7 +1679,6 @@ async function loadFromCloud() {
     if (error) throw error;
 
     if (data && data.data && Object.keys(data.data).length > 0) {
-      // Облако не пустое — используем его
       const cloudData = data.data;
       state = {
         lessons: cloudData.lessons || {},
@@ -1535,7 +1692,6 @@ async function loadFromCloud() {
       render();
       setSyncDot('online');
     } else {
-      // Первый вход — загружаем локальные данные в облако
       await saveToCloud();
     }
   } catch (e) {
@@ -1637,7 +1793,6 @@ document.addEventListener('keydown', e => {
     e.preventDefault();
     openLessonDialog();
   }
-  // Enter в форме авторизации
   if (e.key === 'Enter' && modalOpen) {
     const title = document.getElementById('modalTitle')?.textContent;
     if (title === 'Синхронизация') {
