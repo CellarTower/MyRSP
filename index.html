@@ -551,23 +551,23 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- sb SDK -->
-<script src="supabase.min.js"></script>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
 
 <script>
 /* ============================================================
    ⚠️ НАСТРОЙКА SUPABASE — вставь свои значения!
    ============================================================ */
-const SUPABASE_URL = 'https://ividsmboeungjliwutpy.supabase.co';
+const SUPABASE_URL = 'https://ividsmboeungjliwutpy.supabase.co/rest/v1/';
 const SUPABASE_KEY = 'sb_publishable_hBAqXQERqa0PDwlb6uDJqA_h8vlsC_l';
 
-let sb = null;
+let supabase = null;
 try {
   if (!SUPABASE_URL.startsWith('ВСТАВЬ') && !SUPABASE_KEY.startsWith('ВСТАВЬ')) {
-    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   }
 } catch (e) {
-  console.error('sb init error:', e);
+  console.error('Supabase init error:', e);
 }
 
 /* ============================================================
@@ -1308,14 +1308,14 @@ function setSyncDot(status) {
 }
 
 async function initAuth() {
-  if (!sb) {
+  if (!supabase) {
     setSyncDot('offline');
     document.getElementById('loadingOverlay').classList.add('hide');
     return;
   }
 
   try {
-    const { data: { session } } = await sb.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
 
     if (session) {
       currentUser = session.user;
@@ -1326,7 +1326,7 @@ async function initAuth() {
       setSyncDot('offline');
     }
 
-    sb.auth.onAuthStateChange(async (event, session) => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         currentUser = session.user;
         await loadFromCloud();
@@ -1339,7 +1339,7 @@ async function initAuth() {
       if (event === 'SIGNED_OUT') {
         currentUser = null;
         if (realtimeChannel) {
-          sb.removeChannel(realtimeChannel);
+          supabase.removeChannel(realtimeChannel);
           realtimeChannel = null;
         }
         setSyncDot('offline');
@@ -1355,10 +1355,10 @@ async function initAuth() {
 }
 
 function openAccount() {
-  if (!sb) {
+  if (!supabase) {
     showModal('Аккаунт', `
       <div style="padding:20px; text-align:center; color:var(--text-3); font-size:13px;">
-        sb не настроен.<br>
+        Supabase не настроен.<br>
         Вставь Project URL и anon key в код.
       </div>
     `, `<button class="btn btn-primary btn-block" onclick="closeModal()">Понятно</button>`);
@@ -1455,7 +1455,7 @@ async function doSignIn() {
   msg.textContent = 'Вход...';
   msg.style.color = 'var(--text-3)';
 
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
 
   if (error) {
     msg.style.color = 'var(--danger)';
@@ -1474,7 +1474,7 @@ async function doSignUp() {
   msg.textContent = 'Создание...';
   msg.style.color = 'var(--text-3)';
 
-  const { data, error } = await sb.auth.signUp({ email, password: pass });
+  const { data, error } = await supabase.auth.signUp({ email, password: pass });
 
   if (error) {
     msg.style.color = 'var(--danger)';
@@ -1502,7 +1502,7 @@ function translateAuthError(msg) {
 
 async function signOut() {
   if (!confirm('Выйти из аккаунта? Локальные данные останутся.')) return;
-  await sb.auth.signOut();
+  await supabase.auth.signOut();
   closeModal();
 }
 
@@ -1512,7 +1512,7 @@ async function loadFromCloud() {
   setSyncDot('syncing');
 
   try {
-    const { data, error } = await sb
+    const { data, error } = await supabase
       .from('schedules')
       .select('data')
       .eq('user_id', currentUser.id)
@@ -1552,7 +1552,7 @@ async function saveToCloud() {
   setSyncDot('syncing');
 
   try {
-    const { error } = await sb
+    const { error } = await supabase
       .from('schedules')
       .upsert({
         user_id: currentUser.id,
@@ -1574,7 +1574,7 @@ async function saveToCloud() {
 function subscribeRealtime() {
   if (!currentUser || realtimeChannel) return;
 
-  realtimeChannel = sb
+  realtimeChannel = supabase
     .channel('schedules-' + currentUser.id)
     .on('postgres_changes',
       {
