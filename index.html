@@ -564,10 +564,10 @@ const SUPABASE_KEY = 'sb_publishable_hBAqXQERqa0PDwlb6uDJqA_h8vlsC_l';
 let sb = null;
 try {
   if (!SUPABASE_URL.startsWith('ВСТАВЬ') && !SUPABASE_KEY.startsWith('ВСТАВЬ')) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    sb = window.sb.createClient(SUPABASE_URL, SUPABASE_KEY);
   }
 } catch (e) {
-  console.error('Supabase init error:', e);
+  console.error('sb init error:', e);
 }
 
 /* ============================================================
