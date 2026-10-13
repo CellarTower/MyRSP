@@ -551,7 +551,7 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- Supabase SDK -->
+<!-- sb SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
@@ -564,7 +564,7 @@ const SUPABASE_KEY = 'sb_publishable_hBAqXQERqa0PDwlb6uDJqA_h8vlsC_l';
 let sb = null;
 try {
   if (!SUPABASE_URL.startsWith('ВСТАВЬ') && !SUPABASE_KEY.startsWith('ВСТАВЬ')) {
-    sb = window.sb.createClient(SUPABASE_URL, SUPABASE_KEY);
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   }
 } catch (e) {
   console.error('sb init error:', e);
